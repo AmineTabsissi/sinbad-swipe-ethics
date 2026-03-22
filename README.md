@@ -10,6 +10,24 @@ A minimal, laptop-first web game built with **Vite + React + TypeScript**. Guide
 
 No backend, database, or external services are required.
 
+### Keep `docs/` the same as your latest code
+
+`npm run dev` only runs the dev server. The **`docs/`** folder is a **production build** (same app, with the GitHub Pages `base` path). After you change the game, refresh it:
+
+```bash
+npm run deploy:docs
+```
+
+That runs **`build:docs`** and overwrites **`docs/`** with a clean build (`--emptyOutDir`). Then commit and push **`docs/`**.
+
+To preview the **exact** GitHub build locally (optional):
+
+```bash
+npm run preview:docs
+```
+
+Open the printed URL (often under **`/sinbad-swipe-ethics/`**).
+
 ### Put the game online with GitHub Pages
 
 Match **`repoBase`** in `vite.config.ts` to your GitHub repo name (e.g. `'/sinbad-swipe-ethics/'`).

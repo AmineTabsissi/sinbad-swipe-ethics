@@ -7,8 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && gh-pages -d dist",
-    "deploy:docs": "tsc -b && vite build --outDir docs"
+    "build:docs": "tsc -b && vite build --outDir docs --emptyOutDir",
+    "deploy:docs": "npm run build:docs",
+    "preview:docs": "npm run build:docs && vite preview --outDir docs --base /sinbad-swipe-ethics/",
+    "deploy": "npm run build && gh-pages -d dist"
   },
   "dependencies": {
     "react": "^18.2.0",
