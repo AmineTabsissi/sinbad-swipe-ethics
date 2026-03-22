@@ -3,6 +3,8 @@
  * Optional: add public/sounds/ambient.mp3 and complete.mp3 for extra ambiance.
  */
 
+import { publicUrl } from './publicUrl'
+
 let audioContext: AudioContext | null = null
 
 function getContext(): AudioContext | null {
@@ -90,7 +92,7 @@ export function playAmbient(): void {
   if (typeof window === 'undefined') return
   try {
     if (!ambientAudio) {
-      ambientAudio = new Audio('/sounds/ambient.mp3')
+      ambientAudio = new Audio(publicUrl('sounds/ambient.mp3'))
       ambientAudio.loop = true
       ambientAudio.volume = 0.2
     }

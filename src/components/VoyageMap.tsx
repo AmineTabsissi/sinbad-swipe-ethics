@@ -1,6 +1,7 @@
 import './VoyageMap.css'
+import { publicUrl } from '../utils/publicUrl'
 
-const MAP_IMAGE = '/sinbad-voyages-map.png'
+const MAP_IMAGE = publicUrl('sinbad-voyages-map.png')
 
 interface VoyageMapProps {
   /** Current card index (0–8) to show voyage progress */
