@@ -294,10 +294,13 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-layout">
+      <div className="app-map-region">
+        <VoyageMap currentCard={mapProgress} totalCards={TOTAL_CARDS} />
+      </div>
+      <div className="app-shell">
       <div className="app-shell__voyage-bg" aria-hidden="true" />
       <div className="app-shell__grain" aria-hidden="true" />
-      <VoyageMap currentCard={mapProgress} totalCards={TOTAL_CARDS} />
       <header className="app-header">
         <h1 className="app-title">Sinbad: Swipe Ethics</h1>
         <p className="app-subtitle">
@@ -494,6 +497,7 @@ function App() {
           </section>
         )}
       </main>
+      </div>
     </div>
   )
 }
