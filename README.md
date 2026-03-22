@@ -14,28 +14,71 @@ No backend, database, or external services are required.
 
 Match **`repoBase`** in `vite.config.ts` to your GitHub repo name (e.g. `'/sinbad-swipe-ethics/'`).
 
-#### Option A — Deploy from your computer (no GitHub Actions)
+#### Option A — “Deploy from a branch” only (no GitHub Actions)
 
-Use this if Actions are blocked (billing) or you prefer a simple flow.
+If **Pages** only lets you pick a **branch** (no “GitHub Actions” source), use the **`docs`** folder on **`main`**.
 
-1. Repo → **Settings** → **Pages** → **Build and deployment** → **Source**: **Deploy from a branch**.
-2. (First time only) Pick branch **`gh-pages`**, folder **`/ (root)`** — the branch appears after step 3.
-3. From your project folder:
+1. On your computer, in the project folder:
+
+   ```bash
+   npm install
+   npm run deploy:docs
+   ```
+
+   This builds the site into a **`docs/`** folder (ready for GitHub Pages).
+
+2. Commit and push **`docs/`** to **`main`**:
+
+   ```bash
+   git add docs
+   git commit -m "Build site for GitHub Pages"
+   git push origin main
+   ```
+
+3. On GitHub: **Settings** → **Pages** → **Build and deployment**  
+   - **Source**: **Deploy from a branch**  
+   - **Branch**: **`main`**  
+   - **Folder**: **`/docs`**  
+   - **Save**
+
+4. Your site (after ~1 minute):  
+   `https://<YOUR-USERNAME>.github.io/<REPO-NAME>/`
+
+Whenever you change the game, run **`npm run deploy:docs`** again, commit **`docs/`**, and push.
+
+---
+
+#### Option A2 — `gh-pages` branch (if you prefer)
+
+1. **Settings** → **Pages** can also use branch **`gh-pages`**, folder **`/ (root)`** — but that branch must exist first.
+2. From your project:
 
    ```bash
    npm install
    npm run deploy
    ```
 
-   This runs `npm run build` and publishes **`dist`** to the **`gh-pages`** branch via the [gh-pages](https://www.npmjs.com/package/gh-pages) package.
+   ([gh-pages](https://www.npmjs.com/package/gh-pages) creates/updates the **`gh-pages`** branch from **`dist/`**.)
 
-4. Your site (after GitHub finishes):  
-   `https://<YOUR-USERNAME>.github.io/<REPO-NAME>/`  
-   Slides: add `#presentation` to the URL.
+3. Then in **Pages**, choose **`gh-pages`** + **`/ (root)`**.
 
 #### Option B — GitHub Actions
 
 The repo includes `.github/workflows/deploy.yml`. Set Pages **Source** to **GitHub Actions** and push to `main`. Requires Actions to be allowed on your account.
+
+#### Important — do **not** publish the raw source folder
+
+GitHub Pages must serve the **built** app (the contents of **`dist/`** after `npm run build`), **not** the repo root with `index.html` → `/src/main.tsx`.
+
+- **Wrong Pages setting:** Branch **`main`**, folder **`/` (root)** → browsers request `https://YOUR_USER.github.io/src/main.tsx` → **404** (there is no Vite dev server online).
+- **Right:** **GitHub Actions** (workflow uploads `dist`), **or** branch **`gh-pages`** with only build output from **`npm run deploy`**.
+
+#### Troubleshooting: `GET .../src/main.tsx` 404
+
+1. **Settings → Pages:** Source must be **GitHub Actions** or **gh-pages** (not `main` / root of source).
+2. **Open the project URL** (includes the repo name):  
+   `https://YOUR_USERNAME.github.io/sinbad-swipe-ethics/`  
+   Not only `https://YOUR_USERNAME.github.io/` (that’s a different site unless you use a special `username.github.io` repo).
 
 ### Midterm presentation (slides)
 
