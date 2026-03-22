@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# sinbad-swipe-ethics
-=======
 ## Sinbad: Swipe Ethics
 
 A minimal, laptop-first web game built with **Vite + React + TypeScript**. Guide Sinbad (and the Sultan of Samarkand) through **8 fixed scenarios**, choosing between **Compassionate (←)** and **Mercantile (→)** actions to shape an **Ethics Meter** from 0–100 and unlock one of three endings.
@@ -15,44 +12,34 @@ No backend, database, or external services are required.
 
 ### Put the game online with GitHub Pages
 
-Your repo includes a workflow (`.github/workflows/deploy.yml`) that builds the site and publishes it to **GitHub Pages**.
+Match **`repoBase`** in `vite.config.ts` to your GitHub repo name (e.g. `'/sinbad-swipe-ethics/'`).
 
-1. **Create a GitHub repository**  
-   On [github.com/new](https://github.com/new), create a repo (e.g. `sinbad-swipe-ethics`). The **name** matters for the URL below.
+#### Option A — Deploy from your computer (no GitHub Actions)
 
-2. **Match Vite’s `base` to the repo name**  
-   In `vite.config.ts`, set `repoBase` to `'/<YOUR-REPO-NAME>/'` (leading and trailing slashes).  
-   Example: repo `github.com/you/sinbad-swipe-ethics` → `'/sinbad-swipe-ethics/'`.  
-   If you use a **user site** (`username.github.io` with the repo named `username.github.io`), use `base: '/'` only (change the config accordingly).
+Use this if Actions are blocked (billing) or you prefer a simple flow.
 
-3. **Push your project** (from your project folder):
+1. Repo → **Settings** → **Pages** → **Build and deployment** → **Source**: **Deploy from a branch**.
+2. (First time only) Pick branch **`gh-pages`**, folder **`/ (root)`** — the branch appears after step 3.
+3. From your project folder:
 
    ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git branch -M main
-   git remote add origin https://github.com/<YOUR-USERNAME>/<YOUR-REPO>.git
-   git push -u origin main
+   npm install
+   npm run deploy
    ```
 
-4. **Turn on GitHub Pages**  
-   Repo → **Settings** → **Pages** → under **Build and deployment**, set **Source** to **GitHub Actions** (not “Deploy from a branch”).
+   This runs `npm run build` and publishes **`dist`** to the **`gh-pages`** branch via the [gh-pages](https://www.npmjs.com/package/gh-pages) package.
 
-5. **Wait for the workflow**  
-   Repo → **Actions** tab: the “Deploy to GitHub Pages” workflow should run on each push to `main`. When it’s green, the site is live.
+4. Your site (after GitHub finishes):  
+   `https://<YOUR-USERNAME>.github.io/<REPO-NAME>/`  
+   Slides: add `#presentation` to the URL.
 
-6. **Open your page**  
-   For a **project site**:  
-   `https://<YOUR-USERNAME>.github.io/<YOUR-REPO-NAME>/`  
-   Presentation deep link:  
-   `https://<YOUR-USERNAME>.github.io/<YOUR-REPO-NAME>/#presentation`
+#### Option B — GitHub Actions
 
-If assets or styles 404, double-check that `repoBase` in `vite.config.ts` exactly matches your repository name.
+The repo includes `.github/workflows/deploy.yml`. Set Pages **Source** to **GitHub Actions** and push to `main`. Requires Actions to be allowed on your account.
 
 ### Midterm presentation (slides)
 
-The **midterm deck** is built into the same app—no separate HTML file. From **Home** or **Result**, click **Midterm presentation**, or open the app with `#presentation` in the URL (e.g. `http://localhost:5173/#presentation`). Use **← / → / Space** to change slides, **Esc** or **Back to game** to return.
+The **midterm deck** is built into the same app. From **Home** or **Result**, click **Midterm presentation**, or open the app with `#presentation` in the URL (e.g. `http://localhost:5173/#presentation`). Use **← / → / Space** to change slides, **Esc** or **Back to game** to return.
 
 ### Controls
 
@@ -89,4 +76,3 @@ The **midterm deck** is built into the same app—no separate HTML file. From **
 - Progress is automatically stored in **`localStorage`** under the key `sinbad-swipe-ethics`.
 - Refreshing the page will **not** lose your progress.
 - **Restart** (button or `R` key) clears saved state and returns you to the Home screen.
->>>>>>> e62d9b1 (Initial commit)
