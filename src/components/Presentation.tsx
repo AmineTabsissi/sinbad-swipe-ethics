@@ -85,8 +85,9 @@ export function Presentation({ onClose }: PresentationProps) {
               actions.
             </p>
             <p>
-              Each choice moves an <strong>Ethics Meter</strong> (0–100). The final score determines
-              one of three endings.
+              Each choice shifts three meters—<strong>Ethics</strong>, <strong>Wealth</strong>, and{' '}
+              <strong>Reputation</strong> (0–100). Your final outcome is one of <strong>9 endings</strong>{' '}
+              based on your Wealth tier and your legacy (Ethics + Reputation).
             </p>
             <p className="pres-sub">
               Desktop/laptop only · No backend · Progress saved in the browser
@@ -107,11 +108,11 @@ export function Presentation({ onClose }: PresentationProps) {
                 Samarkand)
               </li>
               <li>
-                <strong>Ethics Meter</strong> (0–100, start 50): Left +10, Right −10
+                <strong>Three meters</strong> (0–100, start 50): Ethics · Wealth · Reputation
               </li>
               <li>
-                <strong>Three endings</strong>: Shrewd Merchant (0–33), Balanced Voyager (34–66),
-                Moral Wanderer (67–100)
+                <strong>9 outcomes</strong>: Wealth tier (Humble / Comfortable / Legendary) × Legacy
+                tier (Cursed Opportunist / Balanced Voyager / Moral Wanderer)
               </li>
               <li>
                 <strong>Animated voyage map</strong> with progress marker and optional AI-generated
@@ -169,13 +170,13 @@ export function Presentation({ onClose }: PresentationProps) {
                 legend.
               </li>
               <li>
-                <strong>Play</strong>: Voyage map at top, “Card X of 8”, Ethics Meter, scenario card,
-                two choice buttons. After each choice: card exit animation, toast with consequence,
-                meter pop (+10 / −10), then next card.
+                <strong>Play</strong>: Voyage map at top, “Card X of 8”, three meters (Ethics/Wealth/Reputation),
+                scenario card, two choice buttons. After each choice: card exit animation, toast with consequence,
+                meter pops, then next card.
               </li>
               <li>
                 <strong>Result</strong>: Ending title, epilogue, compassion/mercantile counts, stats,
-                Restart, Copy Result. Ending-specific background image and tint.
+                Restart, Copy Result. Ending-specific tint and background.
               </li>
             </ul>
           </div>
@@ -186,23 +187,30 @@ export function Presentation({ onClose }: PresentationProps) {
           aria-hidden={index !== 5}
         >
           <div className="pres-slide-content">
-            <h2>Three Endings</h2>
+            <h2>9 Outcomes</h2>
             <div className="pres-endings-list">
               <div className="pres-ending-card pres-shrewd">
-                <h3>Shrewd Merchant</h3>
-                <p>Score 0–33. Pragmatic, rewarded, haunted by the cost.</p>
+                <h3>Legacy tier</h3>
+                <p>
+                  Your <strong>legacy</strong> is based on <strong>Ethics + Reputation</strong>.
+                </p>
               </div>
               <div className="pres-ending-card pres-balanced">
-                <h3>Balanced Voyager</h3>
-                <p>Score 34–66. Mix of profit and mercy, scars and stories.</p>
+                <h3>Wealth tier</h3>
+                <p>
+                  Your <strong>return</strong> is based on your <strong>Wealth</strong> score.
+                </p>
               </div>
               <div className="pres-ending-card pres-moral">
-                <h3>Moral Wanderer</h3>
-                <p>Score 67–100. Principled, compassionate, different legacy.</p>
+                <h3>Final outcome</h3>
+                <p>
+                  Combine both tiers for one of <strong>9 endings</strong> (e.g. “Moral Wanderer ·
+                  Legendary Return”).
+                </p>
               </div>
             </div>
             <p className="pres-sub" style={{ marginTop: 20 }}>
-              Each ending has a unique epilogue and optional background image.
+              This keeps the game short while letting outcomes reflect multiple dimensions.
             </p>
           </div>
         </section>
