@@ -9,11 +9,23 @@ export interface Scenario {
   rightChoiceText: string
   leftConsequence: string
   rightConsequence: string
+  leftDelta: {
+    ethics: number
+    wealth: number
+    reputation: number
+  }
+  rightDelta: {
+    ethics: number
+    wealth: number
+    reputation: number
+  }
 }
 
 export interface GameState {
   currentCardIndex: number
   ethicsScore: number
+  wealthScore: number
+  reputationScore: number
   mercantileCount: number
   compassionCount: number
   screen: Screen

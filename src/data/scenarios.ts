@@ -14,6 +14,8 @@ export const scenarios: Scenario[] = [
       'Abandon your wealth to the sea and use both hands to drag the struggling crewmate into the water with you, risking both your lives.',
     rightConsequence: '“You survive with your wealth, but the old man is lost.”',
     leftConsequence: '“You gamble your safety to save another life.”',
+    leftDelta: { ethics: 10, wealth: -10, reputation: 10 },
+    rightDelta: { ethics: -10, wealth: 10, reputation: -10 },
   },
   {
     id: 'voyage-2-valley-diamonds',
@@ -30,6 +32,8 @@ export const scenarios: Scenario[] = [
       '“You pay the minimum, keeping the fortune for yourself.”',
     leftConsequence:
       '“You share the windfall with those who saved you.”',
+    leftDelta: { ethics: 10, wealth: -10, reputation: 10 },
+    rightDelta: { ethics: -10, wealth: 10, reputation: -10 },
   },
   {
     id: 'voyage-3-isle-cyclops',
@@ -46,6 +50,8 @@ export const scenarios: Scenario[] = [
       '“You escape alone, leaving the others to their fate.”',
     leftConsequence:
       '“You choose solidarity and plan a collective escape.”',
+    leftDelta: { ethics: 10, wealth: -5, reputation: 10 },
+    rightDelta: { ethics: -10, wealth: 5, reputation: -10 },
   },
   {
     id: 'voyage-4-underground-tomb',
@@ -62,6 +68,8 @@ export const scenarios: Scenario[] = [
       '“You take what you need to survive, at a brutal cost.”',
     leftConsequence:
       '“You choose companionship over certainty.”',
+    leftDelta: { ethics: 10, wealth: -5, reputation: 10 },
+    rightDelta: { ethics: -10, wealth: 10, reputation: -10 },
   },
   {
     id: 'voyage-5-old-man-sea',
@@ -78,6 +86,8 @@ export const scenarios: Scenario[] = [
       '“You reduce risk, but abandon someone in the same chains.”',
     leftConsequence:
       '“You risk everything for a shared escape.”',
+    leftDelta: { ethics: 10, wealth: -5, reputation: 10 },
+    rightDelta: { ethics: -10, wealth: 5, reputation: -10 },
   },
   {
     id: 'voyage-6-river-precious-stones',
@@ -94,6 +104,8 @@ export const scenarios: Scenario[] = [
       '“You secure riches, but deny a final kindness.”',
     leftConsequence:
       '“You honor the dying, and accept hardship.”',
+    leftDelta: { ethics: 10, wealth: -10, reputation: 10 },
+    rightDelta: { ethics: -10, wealth: 10, reputation: -10 },
   },
   {
     id: 'voyage-7-elephant-graveyard',
@@ -110,6 +122,8 @@ export const scenarios: Scenario[] = [
       '“You buy freedom by selling out a sacred trust.”',
     leftConsequence:
       '“You keep faith with the herd, at terrible personal cost.”',
+    leftDelta: { ethics: 10, wealth: -10, reputation: 10 },
+    rightDelta: { ethics: -10, wealth: 10, reputation: -10 },
   },
   {
     id: 'bonus-sultan-samarkand',
@@ -126,5 +140,7 @@ export const scenarios: Scenario[] = [
       '“You preserve stability, but live with the secret.”',
     leftConsequence:
       '“You choose honesty, and accept the fallout.”',
+    leftDelta: { ethics: 10, wealth: -5, reputation: 10 },
+    rightDelta: { ethics: -10, wealth: 5, reputation: -10 },
   },
 ]

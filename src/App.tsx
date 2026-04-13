@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import './App.css'
 import { scenarios } from './data/scenarios'
 import { EthicsMeter } from './components/EthicsMeter'
+import { WealthMeter } from './components/WealthMeter'
+import { ReputationMeter } from './components/ReputationMeter'
 import { ScenarioCard } from './components/ScenarioCard'
 import { ToastMessage } from './components/ToastMessage'
 import { VoyageMap } from './components/VoyageMap'
@@ -27,30 +29,53 @@ interface EndingInfo {
   epilogue: string
 }
 
-function getEndingInfo(score: number): EndingInfo {
-  if (score <= 33) {
-    return {
-      id: 'shrewd-merchant',
-      title: 'Shrewd Merchant',
-      epilogue:
-        'You return from your voyages with ledgers thick as sea-logs and holds heavy with treasure. Yet in the quiet hours between deals and toasts, the memories of those you bartered away crowd your thoughts like ghosts in the harbor.',
-    }
+type Tier = 'low' | 'mid' | 'high'
+
+function tierOf(score: number): Tier {
+  if (score <= 33) return 'low'
+  if (score <= 66) return 'mid'
+  return 'high'
+}
+
+function getEndingInfo(ethics: number, wealth: number, reputation: number): EndingInfo {
+  const wealthTier = tierOf(wealth)
+  const legacyTier = tierOf(Math.round((ethics + reputation) / 2))
+
+  const id: EndingId =
+    legacyTier === 'low'
+      ? 'shrewd-merchant'
+      : legacyTier === 'mid'
+        ? 'balanced-voyager'
+        : 'moral-wanderer'
+
+  const wealthLabel =
+    wealthTier === 'low' ? 'Humble' : wealthTier === 'mid' ? 'Comfortable' : 'Legendary'
+
+  const legacyTitle =
+    legacyTier === 'low'
+      ? 'Cursed Opportunist'
+      : legacyTier === 'mid'
+        ? 'Balanced Voyager'
+        : 'Moral Wanderer'
+
+  const title = `${legacyTitle} · ${wealthLabel} Return`
+
+  const epilogueByLegacy: Record<Tier, string> = {
+    low: 'You return with the sea still in your bones—quick to bargain, quick to cut away anything that slows you. Ports remember your name, but not with warmth. Even your victories feel sharpened at the edges.',
+    mid: 'You return as most voyagers do: part merchant, part storyteller, part survivor. Some days you chose mercy, other days you chose profit. The tale you bring home is complicated—like the ocean itself.',
+    high: 'You return lighter than you might have been, but not empty. The people you spared, the promises you kept, and the kindness you carried become a different kind of treasure—one that follows you long after the coins are spent.',
   }
 
-  if (score <= 66) {
-    return {
-      id: 'balanced-voyager',
-      title: 'Balanced Voyager',
-      epilogue:
-        'You sail between ports as both trader and storyteller, carrying scars and silver in equal measure. Sometimes you chose profit, sometimes mercy, and in the end you survive with enough wealth—and enough hard-won wisdom—to fill many long evenings in Baghdad.',
-    }
+  const epilogueByWealth: Record<Tier, string> = {
+    low: 'Your holds are spare. You live by craft and memory more than by gold, and you learn to value what cannot be bought.',
+    mid: 'You come home with enough to rebuild: a steady purse, a respected name, and the freedom to choose your next horizon.',
+    high: 'Your holds gleam with gemstones and strange riches. Feasts and merchants crowd your doors, and your story travels faster than you do.',
   }
 
   return {
-    id: 'moral-wanderer',
-    title: 'Moral Wanderer',
-    epilogue:
-      'Your coffers are lighter than they might have been, but your wake is lined with lives spared and oaths kept. You walk the docks as a sailor of stubborn conscience, remembered less for your fortune than for the strange, luminous kindness that followed in your steps.',
+    id,
+    title,
+    epilogue: `${epilogueByLegacy[legacyTier]} ${epilogueByWealth[wealthTier]}`,
   }
 }
 
@@ -66,7 +91,9 @@ function App() {
   const [toastChoiceType, setToastChoiceType] = useState<'left' | 'right'>('left')
   const [choiceLocked, setChoiceLocked] = useState(false)
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle')
-  const [meterDeltaPop, setMeterDeltaPop] = useState<number | null>(null)
+  const [ethicsDeltaPop, setEthicsDeltaPop] = useState<number | null>(null)
+  const [wealthDeltaPop, setWealthDeltaPop] = useState<number | null>(null)
+  const [reputationDeltaPop, setReputationDeltaPop] = useState<number | null>(null)
   const [cardExiting, setCardExiting] = useState<'left' | 'right' | null>(null)
   const [showHint, setShowHint] = useState(false)
   const [showPresentation, setShowPresentation] = useState(
@@ -135,7 +162,9 @@ function App() {
     setToastVisible(false)
     setCopyStatus('idle')
     setCardExiting(null)
-    setMeterDeltaPop(null)
+    setEthicsDeltaPop(null)
+    setWealthDeltaPop(null)
+    setReputationDeltaPop(null)
   }, [])
 
   const resumeGame = useCallback(() => {
@@ -161,6 +190,9 @@ function App() {
     setCopyStatus('idle')
     setHasSavedGame(true)
     setCardExiting(null)
+    setEthicsDeltaPop(null)
+    setWealthDeltaPop(null)
+    setReputationDeltaPop(null)
   }, [])
 
   const handleRestart = useCallback(() => {
@@ -171,6 +203,9 @@ function App() {
     setChoiceLocked(false)
     setCopyStatus('idle')
     setCardExiting(null)
+    setEthicsDeltaPop(null)
+    setWealthDeltaPop(null)
+    setReputationDeltaPop(null)
   }, [])
 
   const handleChoice = useCallback(
@@ -181,14 +216,16 @@ function App() {
 
       const scenario = scenarios[state.currentCardIndex]
       const isLeft = direction === 'left'
-      const delta = isLeft ? 10 : -10
+      const delta = isLeft ? scenario.leftDelta : scenario.rightDelta
 
       playClick()
       setHintDismissed()
       setShowHint(false)
 
       setCardExiting(direction)
-      setMeterDeltaPop(delta)
+      setEthicsDeltaPop(delta.ethics)
+      setWealthDeltaPop(delta.wealth)
+      setReputationDeltaPop(delta.reputation)
       setChoiceLocked(true)
       setToastChoiceType(direction)
       setToastMessage(
@@ -198,7 +235,9 @@ function App() {
 
       const intermediate: GameState = {
         ...state,
-        ethicsScore: clampScore(state.ethicsScore + delta),
+        ethicsScore: clampScore(state.ethicsScore + delta.ethics),
+        wealthScore: clampScore(state.wealthScore + delta.wealth),
+        reputationScore: clampScore(state.reputationScore + delta.reputation),
         mercantileCount: state.mercantileCount + (isLeft ? 0 : 1),
         compassionCount: state.compassionCount + (isLeft ? 1 : 0),
       }
@@ -229,15 +268,19 @@ function App() {
 
         setToastVisible(false)
         setChoiceLocked(false)
-        window.setTimeout(() => setMeterDeltaPop(null), 800)
+        window.setTimeout(() => {
+          setEthicsDeltaPop(null)
+          setWealthDeltaPop(null)
+          setReputationDeltaPop(null)
+        }, 800)
       }, 380)
     },
     [choiceLocked, state],
   )
 
   const handleCopyResult = useCallback(() => {
-    const ending = getEndingInfo(state.ethicsScore)
-    const summary = `Sinbad: Swipe Ethics — ${ending.title} (Score: ${state.ethicsScore}, Mercantile choices: ${state.mercantileCount}, Compassionate choices: ${state.compassionCount}).`
+    const ending = getEndingInfo(state.ethicsScore, state.wealthScore, state.reputationScore)
+    const summary = `Sinbad: Swipe Ethics — ${ending.title} (Ethics: ${state.ethicsScore}, Wealth: ${state.wealthScore}, Reputation: ${state.reputationScore}; Mercantile: ${state.mercantileCount}, Compassion: ${state.compassionCount}).`
 
     if (typeof navigator === 'undefined' || !navigator.clipboard) {
       setCopyStatus('error')
@@ -280,7 +323,7 @@ function App() {
       ? scenarios[state.currentCardIndex]
       : null
 
-  const endingInfo = getEndingInfo(state.ethicsScore)
+  const endingInfo = getEndingInfo(state.ethicsScore, state.wealthScore, state.reputationScore)
 
   const mapProgress =
     state.screen === 'play'
@@ -312,7 +355,7 @@ function App() {
             {showHint && (
               <div className="first-time-hint" role="region" aria-label="How to play">
                 <p className="first-time-hint__text">
-                  Choose with <kbd>←</kbd> or <kbd>→</kbd> (or the buttons below). Your ethics meter decides your ending.
+                  Choose with <kbd>←</kbd> or <kbd>→</kbd> (or the buttons below). Your ending is shaped by Ethics, Wealth, and Reputation.
                 </p>
                 <button
                   type="button"
@@ -326,8 +369,7 @@ function App() {
             )}
             <p className="home-description">
               Decide whether Sinbad pursues profit or compassion on each voyage.
-              Your choices push an Ethics Meter between Mercantile and
-              Compassion, shaping your final legacy.
+              Your choices shift three meters—Ethics, Wealth, and Reputation—shaping your final legacy.
             </p>
             <div className="home-buttons">
               <button
@@ -369,7 +411,11 @@ function App() {
               <div className="card-index">
                 Card {state.currentCardIndex + 1} of {TOTAL_CARDS}
               </div>
-              <EthicsMeter score={state.ethicsScore} deltaPop={meterDeltaPop} />
+              <div className="meters">
+                <EthicsMeter score={state.ethicsScore} deltaPop={ethicsDeltaPop} />
+                <WealthMeter score={state.wealthScore} deltaPop={wealthDeltaPop} />
+                <ReputationMeter score={state.reputationScore} deltaPop={reputationDeltaPop} />
+              </div>
             </div>
 
             <div className="play-content">
@@ -443,6 +489,14 @@ function App() {
               <div className="result-stat">
                 <span className="result-stat__label">Final Ethics Meter</span>
                 <span className="result-stat__value">{state.ethicsScore}</span>
+              </div>
+              <div className="result-stat">
+                <span className="result-stat__label">Final Wealth</span>
+                <span className="result-stat__value">{state.wealthScore}</span>
+              </div>
+              <div className="result-stat">
+                <span className="result-stat__label">Final Reputation</span>
+                <span className="result-stat__value">{state.reputationScore}</span>
               </div>
               <div className="result-stat">
                 <span className="result-stat__label">Mercantile choices (→)</span>

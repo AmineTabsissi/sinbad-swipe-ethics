@@ -1,6 +1,6 @@
 ## Sinbad: Swipe Ethics
 
-A minimal, laptop-first web game built with **Vite + React + TypeScript**. Guide Sinbad (and the Sultan of Samarkand) through **8 fixed scenarios**, choosing between **Compassionate (←)** and **Mercantile (→)** actions to shape an **Ethics Meter** from 0–100 and unlock one of three endings.
+A minimal, laptop-first web game built with **Vite + React + TypeScript**. Guide Sinbad (and the Sultan of Samarkand) through **8 fixed scenarios**, choosing between **Compassionate (←)** and **Mercantile (→)** actions to shape three meters: **Ethics**, **Wealth**, and **Reputation** (0–100). Your final outcome is one of **9 endings** based on those meters.
 
 ### Run instructions
 
@@ -114,15 +114,18 @@ The **midterm deck** is built into the same app. From **Home** or **Result**, cl
 - **Home**: Title, description, **Start New Voyage**. If there is saved progress in `localStorage`, a **Resume Last Voyage** button is shown. **Midterm presentation** opens the slide deck in the same page.
 - **Play**:
   - Shows **Card X of 8**
-  - Displays the **Ethics Meter** with labels "Mercantile" (left) and "Compassion" (right), plus numeric score
+  - Displays **three meters**:
+    - **Ethics**: Mercantile ↔ Compassion
+    - **Wealth**: Poor ↔ Treasure
+    - **Reputation**: Scorn ↔ Honor
   - Renders one **Scenario Card** at the center
   - Bottom: two large buttons
     - **Compassionate (←)**
     - **Mercantile (→)**
   - After each choice, a brief toast appears under the card for ~1 second with the consequence text and meter change (e.g. “Compassion +10”).
 - **Result**:
-  - Shows ending title (Shrewd Merchant / Balanced Voyager / Moral Wanderer)
-  - Final Ethics Meter score
+  - Shows your outcome title (9 combinations based on **Wealth tier** × **Legacy tier**)
+  - Final scores for **Ethics**, **Wealth**, and **Reputation**
   - Counts of mercantile and compassionate choices
   - A short epilogue paragraph based on your ending
   - Buttons: **Restart**, **Copy Result** (copies a short text summary to the clipboard), **Midterm presentation**

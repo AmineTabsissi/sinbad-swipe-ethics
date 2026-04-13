@@ -5,6 +5,8 @@ const STORAGE_KEY = 'sinbad-swipe-ethics'
 export const initialGameState: GameState = {
   currentCardIndex: 0,
   ethicsScore: 50,
+  wealthScore: 50,
+  reputationScore: 50,
   mercantileCount: 0,
   compassionCount: 0,
   screen: 'home',
@@ -18,7 +20,7 @@ export function loadGameState(): GameState | null {
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<GameState>
 
-    if (
+    const hasCore =
       typeof parsed.currentCardIndex === 'number' &&
       typeof parsed.ethicsScore === 'number' &&
       typeof parsed.mercantileCount === 'number' &&
@@ -26,8 +28,19 @@ export function loadGameState(): GameState | null {
       (parsed.screen === 'home' ||
         parsed.screen === 'play' ||
         parsed.screen === 'result')
-    ) {
-      return parsed as GameState
+
+    if (hasCore) {
+      // Backward compatible defaults for older saves (pre-wealth/reputation)
+      const wealthScore =
+        typeof parsed.wealthScore === 'number' ? parsed.wealthScore : 50
+      const reputationScore =
+        typeof parsed.reputationScore === 'number' ? parsed.reputationScore : 50
+
+      return {
+        ...(parsed as GameState),
+        wealthScore,
+        reputationScore,
+      }
     }
 
     return null
