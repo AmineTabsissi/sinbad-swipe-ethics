@@ -1,4 +1,6 @@
-export type Screen = 'home' | 'play' | 'result'
+export type AdventureId = 'sinbad' | 'aladdin' | 'horse'
+
+export type Screen = 'hub' | 'home' | 'play' | 'result'
 
 export interface Scenario {
   id: string
@@ -22,6 +24,7 @@ export interface Scenario {
 }
 
 export interface GameState {
+  adventureId: AdventureId
   currentCardIndex: number
   ethicsScore: number
   wealthScore: number

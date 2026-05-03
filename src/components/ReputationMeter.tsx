@@ -1,9 +1,12 @@
+import { useI18n } from '../i18n/I18nContext'
+
 interface ReputationMeterProps {
   score: number
   deltaPop?: number | null
 }
 
 export function ReputationMeter({ score, deltaPop }: ReputationMeterProps) {
+  const { t } = useI18n()
   const clamped = Math.min(100, Math.max(0, score))
 
   return (
@@ -13,11 +16,11 @@ export function ReputationMeter({ score, deltaPop }: ReputationMeterProps) {
       aria-valuenow={clamped}
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-label="Reputation meter: scorn to honor"
+      aria-label={t('meter.reputationAria')}
     >
       <div className="reputation-meter__header">
-        <span className="reputation-meter__label">Scorn</span>
-        <span className="reputation-meter__label">Honor</span>
+        <span className="reputation-meter__label">{t('meter.reputationLeft')}</span>
+        <span className="reputation-meter__label">{t('meter.reputationRight')}</span>
       </div>
       <div className="reputation-meter__bar-wrap">
         <div
@@ -37,7 +40,7 @@ export function ReputationMeter({ score, deltaPop }: ReputationMeterProps) {
           </span>
         )}
       </div>
-      <div className="reputation-meter__score">Reputation: {clamped}</div>
+      <div className="reputation-meter__score">{t('meter.reputationScore', { score: String(clamped) })}</div>
     </div>
   )
 }

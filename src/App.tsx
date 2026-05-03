@@ -1,90 +1,70 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
-import { scenarios } from './data/scenarios'
+import { ADVENTURE_ORDER, adventures, adventureIdFromHashFragment } from './data/adventureConfig'
+import { getLocalizedAdventure } from './data/getLocalizedAdventure'
 import { EthicsMeter } from './components/EthicsMeter'
 import { WealthMeter } from './components/WealthMeter'
 import { ReputationMeter } from './components/ReputationMeter'
 import { ScenarioCard } from './components/ScenarioCard'
 import { ToastMessage } from './components/ToastMessage'
 import { VoyageMap } from './components/VoyageMap'
-import type { GameState, Screen } from './types'
+import type { AdventureId, GameState } from './types'
 import {
   clearGameState,
-  initialGameState,
+  freshAdventureHomeState,
+  initialHubState,
   isHintDismissed,
   loadGameState,
   saveGameState,
   setHintDismissed,
+  resumeableFor,
 } from './store/gameState'
+import { publicUrl } from './utils/publicUrl'
 import { playClick, playComplete, playAmbient, stopAmbient, playWhoosh } from './utils/sound'
 import { Presentation } from './components/Presentation'
-
-const TOTAL_CARDS = scenarios.length
-
-type EndingId = 'shrewd-merchant' | 'balanced-voyager' | 'moral-wanderer'
-
-interface EndingInfo {
-  id: EndingId
-  title: string
-  epilogue: string
-}
-
-type Tier = 'low' | 'mid' | 'high'
-
-function tierOf(score: number): Tier {
-  if (score <= 33) return 'low'
-  if (score <= 66) return 'mid'
-  return 'high'
-}
-
-function getEndingInfo(ethics: number, wealth: number, reputation: number): EndingInfo {
-  const wealthTier = tierOf(wealth)
-  const legacyTier = tierOf(Math.round((ethics + reputation) / 2))
-
-  const id: EndingId =
-    legacyTier === 'low'
-      ? 'shrewd-merchant'
-      : legacyTier === 'mid'
-        ? 'balanced-voyager'
-        : 'moral-wanderer'
-
-  const wealthLabel =
-    wealthTier === 'low' ? 'Humble' : wealthTier === 'mid' ? 'Comfortable' : 'Legendary'
-
-  const legacyTitle =
-    legacyTier === 'low'
-      ? 'Cursed Opportunist'
-      : legacyTier === 'mid'
-        ? 'Balanced Voyager'
-        : 'Moral Wanderer'
-
-  const title = `${legacyTitle} · ${wealthLabel} Return`
-
-  const epilogueByLegacy: Record<Tier, string> = {
-    low: 'You return with the sea still in your bones—quick to bargain, quick to cut away anything that slows you. Ports remember your name, but not with warmth. Even your victories feel sharpened at the edges.',
-    mid: 'You return as most voyagers do: part merchant, part storyteller, part survivor. Some days you chose mercy, other days you chose profit. The tale you bring home is complicated—like the ocean itself.',
-    high: 'You return lighter than you might have been, but not empty. The people you spared, the promises you kept, and the kindness you carried become a different kind of treasure—one that follows you long after the coins are spent.',
-  }
-
-  const epilogueByWealth: Record<Tier, string> = {
-    low: 'Your holds are spare. You live by craft and memory more than by gold, and you learn to value what cannot be bought.',
-    mid: 'You come home with enough to rebuild: a steady purse, a respected name, and the freedom to choose your next horizon.',
-    high: 'Your holds gleam with gemstones and strange riches. Feasts and merchants crowd your doors, and your story travels faster than you do.',
-  }
-
-  return {
-    id,
-    title,
-    epilogue: `${epilogueByLegacy[legacyTier]} ${epilogueByWealth[wealthTier]}`,
-  }
-}
+import { buildResultClipboardSummary, getEndingInfo } from './utils/endings'
+import { buildHubTapestryCopy, loadCompletedTaleSummaries, splitTapestryBold } from './utils/anthologyPortrait'
+import { useI18n } from './i18n/I18nContext'
 
 function clampScore(value: number): number {
   return Math.min(100, Math.max(0, value))
 }
 
+function applyHashRoute(): { kind: 'hub' } | { kind: 'play'; adventure: AdventureId; state: GameState } {
+  const h = window.location.hash.replace(/^#\/?/, '')
+
+  const adv = adventureIdFromHashFragment(window.location.hash)
+  if (!adv || h === '' || h === 'hub') {
+    return { kind: 'hub' }
+  }
+
+  const loaded = loadGameState(adv)
+  const total = adventures[adv].scenarios.length
+  if (!loaded) {
+    return {
+      kind: 'play',
+      adventure: adv,
+      state: freshAdventureHomeState(adv),
+    }
+  }
+
+  let screen: 'home' | 'play' | 'result' =
+    loaded.screen === 'hub'
+      ? 'home'
+      : (loaded.screen as 'home' | 'play' | 'result')
+  if (loaded.currentCardIndex >= total) screen = 'result'
+  else if (screen === 'result') screen = 'play'
+
+  return {
+    kind: 'play',
+    adventure: adv,
+    state: { ...loaded, adventureId: adv, screen },
+  }
+}
+
 function App() {
-  const [state, setState] = useState<GameState>(initialGameState)
+  const { locale, setLocale, t } = useI18n()
+  const [state, setState] = useState<GameState>(initialHubState)
   const [hasSavedGame, setHasSavedGame] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [toastVisible, setToastVisible] = useState(false)
@@ -97,17 +77,55 @@ function App() {
   const [cardExiting, setCardExiting] = useState<'left' | 'right' | null>(null)
   const [showHint, setShowHint] = useState(false)
   const [showPresentation, setShowPresentation] = useState(
-    () =>
-      typeof window !== 'undefined' && window.location.hash === '#presentation',
+    () => typeof window !== 'undefined' && window.location.hash === '#presentation',
   )
+  /** Bumps whenever we land on #hub so hub tapestry re-reads localStorage (screen may stay `hub`). */
+  const [hubTapestryTick, setHubTapestryTick] = useState(0)
 
   useEffect(() => {
-    const onHash = () => {
-      setShowPresentation(window.location.hash === '#presentation')
+    function onRoute() {
+      const raw = window.location.hash
+      if (raw === '#presentation') {
+        setShowPresentation(true)
+        return
+      }
+      setShowPresentation(false)
+
+      const route = applyHashRoute()
+      if (route.kind === 'hub') {
+        setState(initialHubState())
+        setHubTapestryTick((t) => t + 1)
+      } else setState(route.state)
+
+      const adv = adventureIdFromHashFragment(raw)
+      if (adv && route.kind !== 'hub') {
+        setHasSavedGame(resumeableFor(adv))
+      } else setHasSavedGame(false)
     }
-    window.addEventListener('hashchange', onHash)
-    return () => window.removeEventListener('hashchange', onHash)
+
+    if (typeof window === 'undefined') return
+    onRoute()
+    window.addEventListener('hashchange', onRoute)
+    return () => window.removeEventListener('hashchange', onRoute)
   }, [])
+
+  /** First-time hint once per tale home if never dismissed globally. */
+  useEffect(() => {
+    if (state.screen !== 'home') return
+    if (!isHintDismissed()) setShowHint(true)
+  }, [state.screen, state.adventureId])
+
+  useEffect(() => {
+    if (state.screen !== 'home') return
+    setHasSavedGame(resumeableFor(state.adventureId))
+  }, [state.screen, state.adventureId])
+
+  const adventureDef = useMemo(
+    () => getLocalizedAdventure(state.adventureId, locale),
+    [state.adventureId, locale],
+  )
+  const scenarios = adventureDef.scenarios
+  const totalCards = scenarios.length
 
   const openPresentation = useCallback(() => {
     setShowPresentation(true)
@@ -116,25 +134,20 @@ function App() {
 
   const closePresentation = useCallback(() => {
     setShowPresentation(false)
-    if (window.location.hash === '#presentation') {
-      window.history.replaceState(
-        null,
-        '',
-        `${window.location.pathname}${window.location.search}`,
-      )
-    }
-  }, [])
+    if (window.location.hash !== '#presentation') return
+    /** Restore a shareable deep link; clearing hash desynced URL from tale and broke refresh/bookmark. */
+    const nextHash =
+      state.screen === 'hub' ? '#hub' : `#${adventures[state.adventureId].hash}`
+    window.history.replaceState(
+      null,
+      '',
+      `${window.location.pathname}${window.location.search}${nextHash}`,
+    )
+  }, [state.screen, state.adventureId])
 
-  useEffect(() => {
-    const loaded = loadGameState()
-    if (loaded) {
-      setState({
-        ...loaded,
-        screen: 'home',
-      })
-      setHasSavedGame(true)
-    }
-    if (!loaded && !isHintDismissed()) setShowHint(true)
+  const goToHub = useCallback(() => {
+    setShowHint(false)
+    window.location.hash = '#hub'
   }, [])
 
   useEffect(() => {
@@ -152,8 +165,9 @@ function App() {
   }, [state.screen])
 
   const startNewGame = useCallback(() => {
+    if (state.screen === 'hub') return
     const next: GameState = {
-      ...initialGameState,
+      ...freshAdventureHomeState(state.adventureId),
       screen: 'play',
     }
     setState(next)
@@ -165,22 +179,23 @@ function App() {
     setEthicsDeltaPop(null)
     setWealthDeltaPop(null)
     setReputationDeltaPop(null)
-  }, [])
+  }, [state.adventureId, state.screen])
 
   const resumeGame = useCallback(() => {
-    const loaded = loadGameState()
+    const loaded = loadGameState(state.adventureId)
     if (!loaded) return
 
-    let screen: Screen
-    if (loaded.currentCardIndex >= TOTAL_CARDS) {
-      screen = 'result'
-    } else {
-      screen = 'play'
-    }
+    let screen: 'home' | 'play' | 'result' =
+      loaded.screen === 'hub'
+        ? 'home'
+        : (loaded.screen as 'home' | 'play' | 'result')
+    if (loaded.currentCardIndex >= totalCards) screen = 'result'
+    else if (screen === 'result') screen = 'play'
 
     const next: GameState = {
       ...loaded,
       screen,
+      adventureId: state.adventureId,
     }
 
     setState(next)
@@ -193,11 +208,12 @@ function App() {
     setEthicsDeltaPop(null)
     setWealthDeltaPop(null)
     setReputationDeltaPop(null)
-  }, [])
+  }, [state.adventureId, totalCards])
 
   const handleRestart = useCallback(() => {
-    clearGameState()
-    setState(initialGameState)
+    clearGameState(state.adventureId)
+    const next = freshAdventureHomeState(state.adventureId)
+    setState(next)
     setHasSavedGame(false)
     setToastVisible(false)
     setChoiceLocked(false)
@@ -206,13 +222,14 @@ function App() {
     setEthicsDeltaPop(null)
     setWealthDeltaPop(null)
     setReputationDeltaPop(null)
-  }, [])
+    saveGameState(next)
+  }, [state.adventureId])
 
   const handleChoice = useCallback(
     (direction: 'left' | 'right') => {
       if (choiceLocked) return
       if (state.screen !== 'play') return
-      if (state.currentCardIndex >= TOTAL_CARDS) return
+      if (state.currentCardIndex >= totalCards) return
 
       const scenario = scenarios[state.currentCardIndex]
       const isLeft = direction === 'left'
@@ -228,9 +245,7 @@ function App() {
       setReputationDeltaPop(delta.reputation)
       setChoiceLocked(true)
       setToastChoiceType(direction)
-      setToastMessage(
-        isLeft ? scenario.leftConsequence : scenario.rightConsequence
-      )
+      setToastMessage(isLeft ? scenario.leftConsequence : scenario.rightConsequence)
       setToastVisible(true)
 
       const intermediate: GameState = {
@@ -245,14 +260,14 @@ function App() {
       setState(intermediate)
 
       const nextIndex = state.currentCardIndex + 1
-      const willBeResult = nextIndex >= TOTAL_CARDS
+      const willBeResult = nextIndex >= totalCards
 
       window.setTimeout(() => {
         playWhoosh()
         setCardExiting(null)
         setState((prev) => {
           const advancedIndex =
-            prev.currentCardIndex < TOTAL_CARDS
+            prev.currentCardIndex < totalCards
               ? prev.currentCardIndex + 1
               : prev.currentCardIndex
 
@@ -275,12 +290,19 @@ function App() {
         }, 800)
       }, 380)
     },
-    [choiceLocked, state],
+    [choiceLocked, state, scenarios, totalCards],
   )
 
   const handleCopyResult = useCallback(() => {
-    const ending = getEndingInfo(state.ethicsScore, state.wealthScore, state.reputationScore)
-    const summary = `Sinbad: Swipe Ethics — ${ending.title} (Ethics: ${state.ethicsScore}, Wealth: ${state.wealthScore}, Reputation: ${state.reputationScore}; Mercantile: ${state.mercantileCount}, Compassion: ${state.compassionCount}).`
+    const summary = buildResultClipboardSummary(
+      state.adventureId,
+      state.ethicsScore,
+      state.wealthScore,
+      state.reputationScore,
+      state.mercantileCount,
+      state.compassionCount,
+      locale,
+    )
 
     if (typeof navigator === 'undefined' || !navigator.clipboard) {
       setCopyStatus('error')
@@ -291,7 +313,7 @@ function App() {
       .writeText(summary)
       .then(() => setCopyStatus('copied'))
       .catch(() => setCopyStatus('error'))
-  }, [state])
+  }, [state, locale])
 
   const dismissHint = useCallback(() => {
     setHintDismissed()
@@ -300,15 +322,22 @@ function App() {
 
   useEffect(() => {
     if (showPresentation) return
+    if (state.screen === 'hub') return
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'ArrowLeft') {
-        event.preventDefault()
-        handleChoice('left')
-      } else if (event.key === 'ArrowRight') {
-        event.preventDefault()
-        handleChoice('right')
-      } else if (event.key === 'r' || event.key === 'R') {
+      if (state.screen === 'play') {
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault()
+          handleChoice('left')
+          return
+        }
+        if (event.key === 'ArrowRight') {
+          event.preventDefault()
+          handleChoice('right')
+          return
+        }
+      }
+      if (event.key === 'r' || event.key === 'R') {
         event.preventDefault()
         handleRestart()
       }
@@ -316,100 +345,238 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [showPresentation, handleChoice, handleRestart])
+  }, [showPresentation, state.screen, handleChoice, handleRestart])
 
   const currentScenario =
-    state.currentCardIndex < TOTAL_CARDS
-      ? scenarios[state.currentCardIndex]
-      : null
+    state.currentCardIndex < totalCards ? scenarios[state.currentCardIndex] : null
 
-  const endingInfo = getEndingInfo(state.ethicsScore, state.wealthScore, state.reputationScore)
+  const endingInfo = getEndingInfo(
+    state.adventureId,
+    state.ethicsScore,
+    state.wealthScore,
+    state.reputationScore,
+    state.compassionCount,
+    state.mercantileCount,
+    locale,
+  )
 
   const mapProgress =
     state.screen === 'play'
       ? state.currentCardIndex
       : state.screen === 'result'
-        ? TOTAL_CARDS
+        ? totalCards
         : 0
+
+  const hubTapestry = useMemo(() => {
+    if (state.screen !== 'hub') return null
+    const summaries = loadCompletedTaleSummaries(locale)
+    return { summaries, copy: buildHubTapestryCopy(summaries, locale) }
+  }, [state.screen, hubTapestryTick, locale])
 
   if (showPresentation) {
     return <Presentation onClose={closePresentation} />
   }
 
+  const hubView = state.screen === 'hub'
+
   return (
-    <div className="app-shell">
+    <div className={`app-shell${hubView ? ' app-shell--hub' : ''}`} data-adventure={state.adventureId}>
       <div className="app-shell__voyage-bg" aria-hidden="true" />
       <div className="app-shell__grain" aria-hidden="true" />
-      <VoyageMap currentCard={mapProgress} totalCards={TOTAL_CARDS} />
+      {!hubView && (
+        <VoyageMap
+          currentCard={mapProgress}
+          totalCards={totalCards}
+          mapSrc={publicUrl(adventureDef.mapImage)}
+          mapAlt={adventureDef.mapImageAlt}
+          mapMarkerLeftPercents={adventureDef.mapMarkerLeftPercents}
+          mapImageObjectPosition={adventureDef.mapImageObjectPosition}
+          mapMarkerTopPercent={adventureDef.mapMarkerTopPercent}
+          mapMarkerTopPercents={adventureDef.mapMarkerTopPercents}
+        />
+      )}
       <header className="app-header">
-        <h1 className="app-title">Sinbad: Swipe Ethics</h1>
-        <p className="app-subtitle">
-          A laptop-first, eight-card voyage through moral trade-offs and
-          mercantile temptation.
-        </p>
+        {hubView ? (
+          <>
+            <h1 className="app-title app-title--hub">{t('header.hubTitle')}</h1>
+            <p className="app-subtitle">{t('header.hubSubtitle')}</p>
+            <div className="hub-lang" role="group" aria-label={t('hub.langLabel')}>
+              <button
+                type="button"
+                className={`hub-lang__btn${locale === 'en' ? ' hub-lang__btn--active' : ''}`}
+                onClick={() => setLocale('en')}
+                aria-pressed={locale === 'en'}
+              >
+                {t('hub.langEn')}
+              </button>
+              <button
+                type="button"
+                className={`hub-lang__btn${locale === 'fr' ? ' hub-lang__btn--active' : ''}`}
+                onClick={() => setLocale('fr')}
+                aria-pressed={locale === 'fr'}
+              >
+                {t('hub.langFr')}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h1 className="app-title">{adventureDef.gameTitle}</h1>
+            <p className="app-subtitle">{adventureDef.gameSubtitle}</p>
+          </>
+        )}
       </header>
 
       <main className="app-main">
+        {state.screen === 'hub' && (
+          <section className="hub-screen" aria-label={t('header.hubSubtitle')}>
+            <div className="hub-hero" aria-hidden="true">
+              {ADVENTURE_ORDER.map((id) => {
+                const def = adventures[id]
+                return (
+                  <div
+                    key={id}
+                    className={`hub-hero__panel hub-hero__panel--${def.id}`}
+                    style={{ backgroundImage: `url(${publicUrl(def.mapImage)})` }}
+                  />
+                )
+              })}
+              <div className="hub-hero__veil" />
+            </div>
+            <p className="hub-intro">{t('hub.intro')}</p>
+
+            {hubTapestry && (
+              <div className="hub-tapestry" aria-label={t('hub.tapestryAria')}>
+                <h2 className="hub-tapestry__headline">{hubTapestry.copy.headline}</h2>
+                <p className="hub-tapestry__tagline">{hubTapestry.copy.tagline}</p>
+                <div className="hub-tapestry__slots">
+                  {ADVENTURE_ORDER.map((id) => {
+                    const def = getLocalizedAdventure(id, locale)
+                    const slot = hubTapestry.summaries.find((s) => s.adventureId === id)
+                    return (
+                      <div
+                        key={id}
+                        className={`hub-tapestry-slot${slot ? ' hub-tapestry-slot--done' : ''}`}
+                      >
+                        <span className="hub-tapestry-slot__tale">{def.icon}</span>
+                        <span className="hub-tapestry-slot__label">{def.hubTitle}</span>
+                        {slot ? (
+                          <>
+                            <span className="hub-tapestry-slot__ending">{slot.endingTitle}</span>
+                            <span className="hub-tapestry-slot__id">{slot.endingId}</span>
+                          </>
+                        ) : (
+                          <span className="hub-tapestry-slot__pending">{t('hub.tapestryPending')}</span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                <p className="hub-tapestry__portrait">
+                  {splitTapestryBold(hubTapestry.copy.portrait).map((part, i) =>
+                    part.bold ? (
+                      <strong key={i}>{part.text}</strong>
+                    ) : (
+                      <span key={i}>{part.text}</span>
+                    ),
+                  )}
+                </p>
+              </div>
+            )}
+
+            <div className="hub-grid">
+              {ADVENTURE_ORDER.map((id) => {
+                const def = getLocalizedAdventure(id, locale)
+                const canResume = resumeableFor(id)
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className="hub-card"
+                    onClick={() => {
+                      window.location.hash = `#${def.hash}`
+                    }}
+                  >
+                    <div
+                      className={`hub-card__visual hub-card__visual--${def.id}`}
+                      style={{ backgroundImage: `url(${publicUrl(def.mapImage)})` }}
+                      aria-hidden="true"
+                    />
+                    <div className="hub-card__body">
+                      <span className="hub-card__icon" aria-hidden="true">
+                        {def.icon}
+                      </span>
+                      <span className="hub-card__title">{def.hubTitle}</span>
+                      <span className="hub-card__blurb">{def.hubBlurb}</span>
+                      {canResume && <span className="hub-card__badge">{t('hub.badgeSaved')}</span>}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="hub-footer">
+              <button type="button" className="secondary-button" onClick={openPresentation}>
+                {t('hub.presentation')}
+              </button>
+            </div>
+          </section>
+        )}
+
         {state.screen === 'home' && (
           <section className="home-screen">
             {showHint && (
-              <div className="first-time-hint" role="region" aria-label="How to play">
-                <p className="first-time-hint__text">
-                  Choose with <kbd>←</kbd> or <kbd>→</kbd> (or the buttons below). Your ending is shaped by Ethics, Wealth, and Reputation.
-                </p>
+              <div className="first-time-hint" role="region" aria-label={t('hint.region')}>
+                <p className="first-time-hint__text">{t('hint.body')}</p>
                 <button
                   type="button"
                   className="first-time-hint__dismiss"
                   onClick={dismissHint}
-                  aria-label="Dismiss hint"
+                  aria-label={t('hint.dismissAria')}
                 >
-                  Got it
+                  {t('hint.dismiss')}
                 </button>
               </div>
             )}
-            <p className="home-description">
-              Decide whether Sinbad pursues profit or compassion on each voyage.
-              Your choices shift three meters—Ethics, Wealth, and Reputation—shaping your final legacy.
-            </p>
+            <button type="button" className="link-back-hub" onClick={goToHub}>
+              {t('header.allTales')}
+            </button>
+            <p className="home-description">{adventureDef.homeDescription}</p>
             <div className="home-buttons">
-              <button
-                type="button"
-                className="primary-button"
-                onClick={startNewGame}
-                aria-label="Start new voyage"
-              >
-                Start New Voyage
+              <button type="button" className="primary-button" onClick={startNewGame} aria-label={t('home.startAria')}>
+                {t('home.start')}
               </button>
               {hasSavedGame && (
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={resumeGame}
-                  aria-label="Resume last voyage"
-                >
-                  Resume Last Voyage
+                <button type="button" className="secondary-button" onClick={resumeGame} aria-label={t('home.resumeAria')}>
+                  {t('home.resume')}
                 </button>
               )}
               <button
                 type="button"
                 className="secondary-button"
                 onClick={openPresentation}
-                aria-label="Open midterm presentation slides"
+                aria-label={t('home.presentationAria')}
               >
-                Midterm presentation
+                {t('hub.presentation')}
               </button>
             </div>
             <p className="keyboard-hint">
-              <kbd>←</kbd> Compassionate · <kbd>→</kbd> Mercantile · <kbd>R</kbd> Restart. Progress saved in this browser.
+              <kbd>←</kbd> {adventureDef.leftVerb} · <kbd>→</kbd> {adventureDef.rightVerb} · <kbd>R</kbd>{' '}
+              {t('home.keyboardHint')}
             </p>
           </section>
         )}
 
         {state.screen === 'play' && currentScenario && (
           <section className="play-screen">
+            <button type="button" className="link-back-hub link-back-hub--inline" onClick={goToHub}>
+              {t('play.tales')}
+            </button>
             <div className="play-top-bar">
               <div className="card-index">
-                Card {state.currentCardIndex + 1} of {TOTAL_CARDS}
+                {t('play.cardIndex', {
+                  current: String(state.currentCardIndex + 1),
+                  total: String(totalCards),
+                })}
               </div>
               <div className="meters">
                 <EthicsMeter score={state.ethicsScore} deltaPop={ethicsDeltaPop} />
@@ -423,19 +590,16 @@ function App() {
                 key={currentScenario.id}
                 scenario={currentScenario}
                 cardIndex={state.currentCardIndex}
-                totalCards={TOTAL_CARDS}
+                totalCards={totalCards}
                 exitDirection={cardExiting}
               />
 
-              <ToastMessage
-                message={toastMessage}
-                visible={toastVisible}
-                choiceType={toastChoiceType}
-              />
+              <ToastMessage message={toastMessage} visible={toastVisible} choiceType={toastChoiceType} />
             </div>
 
             <p className="keyboard-hint keyboard-hint--play">
-              <kbd>←</kbd> Compassion · <kbd>→</kbd> Mercantile · <kbd>R</kbd> Restart
+              <kbd>←</kbd> {adventureDef.leftVerb} · <kbd>→</kbd> {adventureDef.rightVerb} · <kbd>R</kbd>{' '}
+              {t('play.restartHint')}
             </p>
 
             <div className="choice-buttons">
@@ -444,24 +608,20 @@ function App() {
                 className="choice-button choice-button--left"
                 onClick={() => handleChoice('left')}
                 disabled={choiceLocked}
-                aria-label="Choose compassionate"
+                aria-label={t('play.chooseLeft', { label: adventureDef.leftVerb })}
               >
-                Compassionate (←)
-                <span className="choice-button__subtitle">
-                  {currentScenario.leftChoiceText}
-                </span>
+                {adventureDef.leftVerb} (←)
+                <span className="choice-button__subtitle">{currentScenario.leftChoiceText}</span>
               </button>
               <button
                 type="button"
                 className="choice-button choice-button--right"
                 onClick={() => handleChoice('right')}
                 disabled={choiceLocked}
-                aria-label="Choose mercantile"
+                aria-label={t('play.chooseRight', { label: adventureDef.rightVerb })}
               >
-                Mercantile (→)
-                <span className="choice-button__subtitle">
-                  {currentScenario.rightChoiceText}
-                </span>
+                {adventureDef.rightVerb} (→)
+                <span className="choice-button__subtitle">{currentScenario.rightChoiceText}</span>
               </button>
             </div>
           </section>
@@ -469,9 +629,13 @@ function App() {
 
         {state.screen === 'result' && (
           <section
-            className={`result-screen result-screen--${endingInfo.id}`}
-            aria-label="Game result"
+            className={`result-screen result-screen--${endingInfo.backgroundKey}`}
+            aria-label={t('result.aria')}
+            data-ending-id={endingInfo.id}
           >
+            <button type="button" className="link-back-hub link-back-hub--inline" onClick={goToHub}>
+              {t('play.tales')}
+            </button>
             <div className="result-celebration" aria-hidden="true">
               {[...Array(12)].map((_, i) => (
                 <span key={i} className="result-celebration__particle" style={{ '--i': i } as React.CSSProperties} />
@@ -480,71 +644,58 @@ function App() {
 
             <h2 className="result-title">{endingInfo.title}</h2>
             <p className="result-epilogue">{endingInfo.epilogue}</p>
+            <p className="result-playstyle">{endingInfo.playstyleCoda}</p>
 
             <p className="result-one-liner">
-              You chose compassion {state.compassionCount} time{state.compassionCount !== 1 ? 's' : ''} and mercantile {state.mercantileCount} time{state.mercantileCount !== 1 ? 's' : ''}.
+              {adventureDef.leftVerb} (←): {state.compassionCount} · {adventureDef.rightVerb} (→):{' '}
+              {state.mercantileCount}.
             </p>
 
             <div className="result-stats">
               <div className="result-stat">
-                <span className="result-stat__label">Final Ethics Meter</span>
+                <span className="result-stat__label">{t('result.statEthics')}</span>
                 <span className="result-stat__value">{state.ethicsScore}</span>
               </div>
               <div className="result-stat">
-                <span className="result-stat__label">Final Wealth</span>
+                <span className="result-stat__label">{t('result.statWealth')}</span>
                 <span className="result-stat__value">{state.wealthScore}</span>
               </div>
               <div className="result-stat">
-                <span className="result-stat__label">Final Reputation</span>
+                <span className="result-stat__label">{t('result.statReputation')}</span>
                 <span className="result-stat__value">{state.reputationScore}</span>
               </div>
               <div className="result-stat">
-                <span className="result-stat__label">Mercantile choices (→)</span>
+                <span className="result-stat__label">{t('result.statRight')}</span>
                 <span className="result-stat__value">{state.mercantileCount}</span>
               </div>
               <div className="result-stat">
-                <span className="result-stat__label">Compassionate choices (←)</span>
+                <span className="result-stat__label">{t('result.statLeft')}</span>
                 <span className="result-stat__value">{state.compassionCount}</span>
               </div>
             </div>
 
             <div className="result-actions">
-              <button
-                type="button"
-                className="primary-button"
-                onClick={handleRestart}
-                aria-label="Restart game"
-              >
-                Restart
+              <button type="button" className="primary-button" onClick={handleRestart} aria-label={t('result.restartAria')}>
+                {t('result.restart')}
               </button>
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={handleCopyResult}
-                aria-label="Copy result to clipboard"
-              >
-                Copy Result
+              <button type="button" className="secondary-button" onClick={goToHub} aria-label={t('result.hubAria')}>
+                {t('result.hub')}
+              </button>
+              <button type="button" className="secondary-button" onClick={handleCopyResult} aria-label={t('result.copyAria')}>
+                {t('result.copy')}
               </button>
               <button
                 type="button"
                 className="secondary-button"
                 onClick={openPresentation}
-                aria-label="Open midterm presentation slides"
+                aria-label={t('result.presentationAria')}
               >
-                Midterm presentation
+                {t('result.presentation')}
               </button>
             </div>
 
-            {copyStatus === 'copied' && (
-              <p className="copy-status copy-status--success">
-                Result copied to clipboard.
-              </p>
-            )}
-            {copyStatus === 'error' && (
-              <p className="copy-status copy-status--error">
-                Could not copy result in this browser.
-              </p>
-            )}
+            {copyStatus === 'copied' && <p className="copy-status copy-status--success">{t('result.copied')}</p>}
+            {copyStatus === 'error' && <p className="copy-status copy-status--error">{t('result.copyError')}</p>}
           </section>
         )}
       </main>

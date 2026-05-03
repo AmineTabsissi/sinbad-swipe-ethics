@@ -1,6 +1,6 @@
-## Sinbad: Swipe Ethics
+## Arabian Nights — Three Tales
 
-A minimal, laptop-first web game built with **Vite + React + TypeScript**. Guide Sinbad (and the Sultan of Samarkand) through **8 fixed scenarios**, choosing between **Compassionate (←)** and **Mercantile (→)** actions to shape three meters: **Ethics**, **Wealth**, and **Reputation** (0–100). Your final outcome is one of **9 endings** based on those meters.
+A laptop-first **Vite + React + TypeScript** anthology: **Sinbad** (*Swipe Ethics*), **Aladdin** (*The Lamp Ledger*), and **The Ebony Horse** (*Skybound Crown*). Pick a tale from the hub, then play **eight fixed beats** with two actions per card (labels are themed per story). **Ethics**, **Wealth**, and **Reputation** (0–100) drive one of **nine endings** each time. Progress, maps, and copy are per-adventure; no backend.
 
 ### Run instructions
 
@@ -98,37 +98,25 @@ GitHub Pages must serve the **built** app (the contents of **`dist/`** after `np
    `https://YOUR_USERNAME.github.io/sinbad-swipe-ethics/`  
    Not only `https://YOUR_USERNAME.github.io/` (that’s a different site unless you use a special `username.github.io` repo).
 
-### Midterm presentation (slides)
+### Final presentation (slides)
 
-The **midterm deck** is built into the same app. From **Home** or **Result**, click **Midterm presentation**, or open the app with `#presentation` in the URL (e.g. `http://localhost:5173/#presentation`). Use **← / → / Space** to change slides, **Esc** or **Back to game** to return.
+The **final deck** is built into the same app (14 slides: overview, three tales, gameplay, maps, outcomes, stack, codebase, routing, polish, content, demo, thank-you). From **Hub**, **Tale home**, or **Result**, click **Final presentation**, or open the app with `#presentation` in the URL (e.g. `http://localhost:5173/#presentation`). Use **← / → / Space** to change slides, **Esc** or **Back to app** to return.
 
 ### Controls
 
-- **Left Arrow**: Compassionate choice (LEFT)
-- **Right Arrow**: Mercantile choice (RIGHT)
-- **R**: Restart (clears progress and returns to Home)
-- **Mouse**: Click the on-screen buttons for the same actions
+- **Play screen only**: **←** / **→** choose left or right (Sinbad: Compassion / Mercantile; other tales use their own verb pair on the buttons).
+- **Tale home, play, or result**: **R** restarts the current tale (clears that tale’s save and returns to its home screen).
+- **Mouse**: Same as keyboard — choice buttons on play, **Restart** / hub links elsewhere.
 
 ### Game flow
 
-- **Home**: Title, description, **Start New Voyage**. If there is saved progress in `localStorage`, a **Resume Last Voyage** button is shown. **Midterm presentation** opens the slide deck in the same page.
+- **Hub**: Choose one of three adventures; a **Progress saved** badge appears when that slot has data. **Final presentation** opens the built-in slide deck (`#presentation`).
+- **Tale home**: Story blurb, **Start New Voyage**, **Resume Last Voyage** when applicable, **Final presentation**.
 - **Play**:
-  - Shows **Card X of 8**
-  - Displays **three meters**:
-    - **Ethics**: Mercantile ↔ Compassion
-    - **Wealth**: Poor ↔ Treasure
-    - **Reputation**: Scorn ↔ Honor
-  - Renders one **Scenario Card** at the center
-  - Bottom: two large buttons
-    - **Compassionate (←)**
-    - **Mercantile (→)**
-  - After each choice, a brief toast appears under the card for ~1 second with the consequence text and meter change (e.g. “Compassion +10”).
+  - **Card X of 8**, per-tale **voyage map** strip, three meters (**Ethics**, **Wealth**, **Reputation**), one **Scenario Card**, two large choice buttons, short consequence toasts after each pick.
 - **Result**:
-  - Shows your outcome title (9 combinations based on **Wealth tier** × **Legacy tier**)
-  - Final scores for **Ethics**, **Wealth**, and **Reputation**
-  - Counts of mercantile and compassionate choices
-  - A short epilogue paragraph based on your ending
-  - Buttons: **Restart**, **Copy Result** (copies a short text summary to the clipboard), **Midterm presentation**
+  - Outcome title (9 combinations from **Wealth tier** × **Legacy tier**), final scores, mercantile/compassion counts, tale-specific epilogue where defined.
+  - **Restart**, **Copy Result** (clipboard summary), **Final presentation**, **Tales** back to hub.
 
 ### Optional: sound
 
@@ -137,6 +125,7 @@ The **midterm deck** is built into the same app. From **Home** or **Result**, cl
 
 ### Persistence
 
-- Progress is automatically stored in **`localStorage`** under the key `sinbad-swipe-ethics`.
-- Refreshing the page will **not** lose your progress.
-- **Restart** (button or `R` key) clears saved state and returns you to the Home screen.
+- Each tale uses its own **`localStorage`** key: `arabian-night-v1-sinbad`, `arabian-night-v1-aladdin`, `arabian-night-v1-horse`.
+- The first load of Sinbad may **migrate** an older single-key save (`sinbad-swipe-ethics`) into `arabian-night-v1-sinbad`, then remove the legacy key.
+- Refreshing the page does **not** lose progress for the adventure you were in (hash + saved state).
+- **Restart** (or **R**) clears **only the current tale’s** slot and returns you to that tale’s **home** screen.

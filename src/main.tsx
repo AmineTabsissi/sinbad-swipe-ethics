@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import { I18nProvider } from './i18n/I18nContext'
 
 /** Public-folder images in CSS need the Vite base path (GitHub Pages). */
 const base = import.meta.env.BASE_URL
@@ -26,7 +27,9 @@ const container = document.getElementById('root')
 if (container) {
   createRoot(container).render(
     <StrictMode>
-      <App />
+      <I18nProvider>
+        <App />
+      </I18nProvider>
     </StrictMode>,
   )
 }

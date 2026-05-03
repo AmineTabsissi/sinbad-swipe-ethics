@@ -1,6 +1,6 @@
 import type { Scenario } from '../types'
 
-export const scenarios: Scenario[] = [
+export const scenariosSinbad: Scenario[] = [
   {
     id: 'voyage-1-whale-island',
     voyageTitle: 'Voyage 1: The Whale Island',

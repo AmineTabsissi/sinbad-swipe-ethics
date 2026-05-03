@@ -1,3 +1,5 @@
+import { useI18n } from '../i18n/I18nContext'
+
 interface EthicsMeterProps {
   score: number
   /** Show a small +10 or -10 pop next to the bar (fades out) */
@@ -5,13 +7,21 @@ interface EthicsMeterProps {
 }
 
 export function EthicsMeter({ score, deltaPop }: EthicsMeterProps) {
+  const { t } = useI18n()
   const clamped = Math.min(100, Math.max(0, score))
 
   return (
-    <div className="ethics-meter" role="meter" aria-valuenow={clamped} aria-valuemin={0} aria-valuemax={100} aria-label="Ethics meter: compassion to mercantile">
+    <div
+      className="ethics-meter"
+      role="meter"
+      aria-valuenow={clamped}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={t('meter.ethicsAria')}
+    >
       <div className="ethics-meter__header">
-        <span className="ethics-meter__label">Mercantile</span>
-        <span className="ethics-meter__label">Compassion</span>
+        <span className="ethics-meter__label">{t('meter.ethicsLeft')}</span>
+        <span className="ethics-meter__label">{t('meter.ethicsRight')}</span>
       </div>
       <div className="ethics-meter__bar-wrap">
         <div
@@ -31,7 +41,7 @@ export function EthicsMeter({ score, deltaPop }: EthicsMeterProps) {
           </span>
         )}
       </div>
-      <div className="ethics-meter__score">Ethics Meter: {clamped}</div>
+      <div className="ethics-meter__score">{t('meter.ethicsScore', { score: String(clamped) })}</div>
     </div>
   )
 }

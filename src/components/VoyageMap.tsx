@@ -1,40 +1,65 @@
 import './VoyageMap.css'
-import { publicUrl } from '../utils/publicUrl'
-
-const MAP_IMAGE = publicUrl('sinbad-voyages-map.png')
+import { useI18n } from '../i18n/I18nContext'
+import { markerLeftPercentForCard, markerTopPercentForCard } from '../utils/mapMarkers'
 
 interface VoyageMapProps {
-  /** Current card index (0–8) to show voyage progress */
+  /** Current card index while playing (0-based); may be `totalCards` on result screen. */
   currentCard?: number
   totalCards?: number
+  /** Full URL built from `public/` (e.g. `publicUrl(config.mapImage)`). */
+  mapSrc: string
+  /** Describes the map motif for accessibility (banner is decorative + aria-hidden elsewhere). */
+  mapAlt?: string
+  /** One horizontal stop per card; omit for default even spacing (Sinbad-style). */
+  mapMarkerLeftPercents?: number[]
+  mapImageObjectPosition?: string
+  /** Single CSS `top` % when `mapMarkerTopPercents` is omitted. */
+  mapMarkerTopPercent?: number
+  /** Per-card CSS `top` % (length === totalCards) for wave layouts on calibrated art. */
+  mapMarkerTopPercents?: number[]
 }
 
-export function VoyageMap({ currentCard = 0, totalCards = 8 }: VoyageMapProps) {
-  // Marker at first stop (Whale) when game starts (card 0); moves to next stop each card
-  const pathProgress =
-    totalCards > 0
-      ? currentCard >= totalCards
-        ? 100
-        : ((currentCard + 1) / totalCards) * 100
-      : 0
-  const markerLeft = 5 + (pathProgress / 100) * 90
+export function VoyageMap({
+  currentCard = 0,
+  totalCards = 8,
+  mapSrc,
+  mapAlt = 'Story progress map',
+  mapMarkerLeftPercents,
+  mapImageObjectPosition,
+  mapMarkerTopPercent,
+  mapMarkerTopPercents,
+}: VoyageMapProps) {
+  const { t } = useI18n()
+  const markerLeft = markerLeftPercentForCard(mapMarkerLeftPercents, currentCard, totalCards)
+  const markerTop = markerTopPercentForCard(
+    mapMarkerTopPercents,
+    mapMarkerTopPercent,
+    currentCard,
+    totalCards,
+  )
 
   return (
     <div className="voyage-map" aria-hidden="true">
       <div className="voyage-map__image-wrap">
         <img
-          src={MAP_IMAGE}
-          alt="The wondrous voyages of Sinbad the Sailor — from Basra to the unknown"
+          src={mapSrc}
+          alt=""
+          role="presentation"
           className="voyage-map__image"
+          style={mapImageObjectPosition ? { objectPosition: mapImageObjectPosition } : undefined}
+          title={mapAlt}
+          key={mapSrc}
         />
         <div className="voyage-map__overlay" />
       </div>
 
-      {/* Animated progress marker: at current stop (Whale when card 1, etc.) */}
       <div
         className="voyage-map__marker"
-        style={{ left: `${markerLeft}%` }}
-        title={`Voyage progress: ${Math.min(currentCard + 1, totalCards)} of ${totalCards}`}
+        style={{ left: `${markerLeft}%`, top: `${markerTop}%` }}
+        title={t('map.progressTitle', {
+          current: String(Math.min(currentCard + 1, totalCards)),
+          total: String(totalCards),
+        })}
       >
         <span className="voyage-map__marker-icon" aria-hidden="true">
           <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -48,7 +73,10 @@ export function VoyageMap({ currentCard = 0, totalCards = 8 }: VoyageMapProps) {
       </div>
 
       <div className="voyage-map__label">
-        Card {Math.min(currentCard + 1, totalCards)} of {totalCards}
+        {t('map.cardLabel', {
+          current: String(Math.min(currentCard + 1, totalCards)),
+          total: String(totalCards),
+        })}
       </div>
     </div>
   )

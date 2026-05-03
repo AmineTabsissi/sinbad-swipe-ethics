@@ -1,4 +1,5 @@
 import type { Scenario } from '../types'
+import { useI18n } from '../i18n/I18nContext'
 
 interface ScenarioCardProps {
   scenario: Scenario
@@ -14,15 +15,16 @@ export function ScenarioCard({
   totalCards,
   exitDirection,
 }: ScenarioCardProps) {
+  const { t } = useI18n()
+  const cur = String(cardIndex + 1)
+  const tot = String(totalCards)
   return (
     <article
       className={`scenario-card ${exitDirection ? `scenario-card--exit-${exitDirection}` : ''}`}
-      aria-label={`Card ${cardIndex + 1} of ${totalCards}: ${scenario.voyageTitle}`}
+      aria-label={t('scenario.cardAria', { current: cur, total: tot, title: scenario.voyageTitle })}
     >
       <header className="scenario-card__header">
-        <div className="scenario-card__counter">
-          Card {cardIndex + 1} of {totalCards}
-        </div>
+        <div className="scenario-card__counter">{t('map.cardLabel', { current: cur, total: tot })}</div>
         <h2 className="scenario-card__title">{scenario.voyageTitle}</h2>
       </header>
       <section className="scenario-card__body">

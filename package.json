@@ -1,5 +1,6 @@
 {
   "name": "sinbad-swipe-ethics",
+  "description": "Arabian Nights anthology web app — Sinbad, Aladdin, Ebony Horse (Vite + React + TypeScript).",
   "private": true,
   "version": "0.0.1",
   "type": "module",

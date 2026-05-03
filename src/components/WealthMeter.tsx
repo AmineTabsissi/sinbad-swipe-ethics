@@ -1,9 +1,12 @@
+import { useI18n } from '../i18n/I18nContext'
+
 interface WealthMeterProps {
   score: number
   deltaPop?: number | null
 }
 
 export function WealthMeter({ score, deltaPop }: WealthMeterProps) {
+  const { t } = useI18n()
   const clamped = Math.min(100, Math.max(0, score))
 
   return (
@@ -13,11 +16,11 @@ export function WealthMeter({ score, deltaPop }: WealthMeterProps) {
       aria-valuenow={clamped}
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-label="Wealth meter: poverty to treasure"
+      aria-label={t('meter.wealthAria')}
     >
       <div className="wealth-meter__header">
-        <span className="wealth-meter__label">Poor</span>
-        <span className="wealth-meter__label">Treasure</span>
+        <span className="wealth-meter__label">{t('meter.wealthLeft')}</span>
+        <span className="wealth-meter__label">{t('meter.wealthRight')}</span>
       </div>
       <div className="wealth-meter__bar-wrap">
         <div
@@ -34,7 +37,7 @@ export function WealthMeter({ score, deltaPop }: WealthMeterProps) {
           </span>
         )}
       </div>
-      <div className="wealth-meter__score">Wealth: {clamped}</div>
+      <div className="wealth-meter__score">{t('meter.wealthScore', { score: String(clamped) })}</div>
     </div>
   )
 }
